@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Happy Marriage Gayatri</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    body {
+      touch-action: manipulation;
+    }
+    .scratch-card {
+      background: radial-gradient(circle at top left, #2a2a2a, #111111);
+    }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+  <!-- Main Container -->
+  <div id="app" class="w-full max-w-md"></div>
+
+  <script>
+    // 1. DATA CONFIGURATION (Extracted from image)
+    const CARDS_DATA = [
+      { id: "card1", code: "JBGE4GGDDCTEVH" },
+      { id: "card2", code: "4A6GX87APETFNQ" },
+      { id: "card3", code: "WCR4QYBM6QKXFX" },
+      { id: "card4", code: "WRWCWHYXPW6UFE" },
+      { id: "card5", code: "W6QC3WQQAB8G3R" }
+    ];
+
+    const GREETING = "Best wishes Gayatri";
+    const SENDER = "From Mohit Chitkara and Family";
+
+    // 2. ROUTING LOGIC
+    const urlParams = new URLSearchParams(window.location.search);
+    const selectedCardId = urlParams.get("id");
+
+    const appEl = document.getElementById("app");
+
+    if (selectedCardId) {
+      // Find the card matching the query param ?id=cardX
+      const card = CARDS_DATA.find(c => c.id === selectedCardId);
+      if (card) {
+        renderScratchView(card);
+      } else {
+        renderNotFound();
+      }
+    } else {
+      // Show Admin / Generator View with the 5 shareable links
+      renderAdminView();
+    }
+
+    // -------------------------------------------------------------
+    // ADMIN / LINK SELECTION VIEW
+    // -------------------------------------------------------------
+    function renderAdminView() {
+      const baseUrl = window.location.origin + window.location.pathname;
+
+      let linksHtml = CARDS_DATA.map((card, idx) => {
+        const fullUrl = `${baseUrl}?id=${card.id}`;
+        return `
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col gap-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-semibold uppercase tracking-wider text-amber-400">Card #${idx + 1}</span>
+              <span class="text-xs text-zinc-500 font-mono">${card.code}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="text" readonly value="${fullUrl}" class="bg-zinc-950 border border-zinc-800 text-xs text-zinc-400 rounded p-2 w-full font-mono select-all focus:outline-none" />
+              <button onclick="copyToClipboard('${fullUrl}', this)" class="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold px-3 py-2 rounded text-xs whitespace-nowrap transition">
+                Copy Link
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      appEl.innerHTML = `
+        <div class="space-y-6">
+          <div class="text-center space-y-1">
+            <h1 class="text-xl font-bold text-amber-400">Happy Marriage Gayatri</h1>
+            <p class="text-xs text-zinc-400">5 Unique Scratch Card Links</p>
+            <p class="text-xs text-zinc-500 italic mt-1">${SENDER}</p>
+          </div>
+          <div class="space-y-3">
+            ${linksHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    // -------------------------------------------------------------
+    // SCRATCH CARD CLIENT VIEW
+    // -------------------------------------------------------------
+    function renderScratchView(card) {
+      appEl.innerHTML = `
+        <div class="scratch-card border border-amber-500/30 rounded-2xl p-6 shadow-2xl relative overflow-hidden text-center space-y-5">
+          
+          <!-- Header Branding -->
+          <div class="space-y-1">
+            <div class="text-amber-400 text-xs font-bold tracking-widest uppercase">Special Gift Voucher</div>
+            <h2 class="text-2xl font-bold text-zinc-100">${GREETING}</h2>
+            <p class="text-xs text-zinc-400 font-medium">${SENDER}</p>
+          </div>
+
+          <!-- Scratch Canvas Container -->
+          <div class="relative w-full h-32 bg-zinc-900 rounded-xl border border-zinc-800 flex items-center justify-center overflow-hidden shadow-inner">
+            <!-- Hidden Code underneath -->
+            <div class="absolute inset-0 flex flex-col items-center justify-center space-y-1">
+              <span class="text-2xl font-mono font-extrabold tracking-wider text-amber-400 select-all">${card.code}</span>
+              <span class="text-[10px] text-zinc-500 uppercase tracking-widest">Voucher Code</span>
+            </div>
+
+            <!-- Scratch Foil Canvas -->
+            <canvas id="scratchCanvas" class="absolute inset-0 z-10 cursor-pointer touch-none"></canvas>
+          </div>
+
+          <!-- Copy Button Container -->
+          <div id="actionArea" class="hidden">
+            <button onclick="copyToClipboard('${card.code}', this)" class="w-full bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold py-3 rounded-xl shadow-lg transition">
+              Copy Code
+            </button>
+          </div>
+
+          <p id="instruction" class="text-xs text-zinc-500">Scratch the silver box above to reveal your code</p>
+        </div>
+      `;
+
+      initScratchCanvas();
+    }
+
+    // -------------------------------------------------------------
+    // CANVAS SCRATCH LOGIC
+    // -------------------------------------------------------------
+    function initScratchCanvas() {
+      const canvas = document.getElementById("scratchCanvas");
+      if (!canvas) return;
+
+      const ctx = canvas.getContext("2d");
+      const rect = canvas.parentElement.getBoundingClientRect();
+      
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+
+      // Draw metallic foil pattern
+      ctx.fillStyle = "#888888";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Add silver foil texture detail
+      for (let i = 0; i < 500; i++) {
+        ctx.fillStyle = Math.random() > 0.5 ? "#aaaaaa" : "#666666";
+        ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 2, 2);
+      }
+
+      // Add overlay text instruction
+      ctx.font = "bold 14px sans-serif";
+      ctx.fillStyle = "#222222";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("✨ SCRATCH HERE ✨", canvas.width / 2, canvas.height / 2);
+
+      let isDrawing = false;
+      let isRevealed = false;
+
+      function scratch(x, y) {
+        if (isRevealed) return;
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.beginPath();
+        ctx.arc(x, y, 20, 0, Math.PI * 2);
+        ctx.fill();
+
+        checkRevealThreshold();
+      }
+
+      function getPos(e) {
+        const bounds = canvas.getBoundingClientRect();
+        let clientX = e.clientX;
+        let clientY = e.clientY;
+
+        if (e.touches && e.touches[0]) {
+          clientX = e.touches[0].clientX;
+          clientY = e.touches[0].clientY;
+        }
+
+        return {
+          x: clientX - bounds.left,
+          y: clientY - bounds.top
+        };
+      }
+
+      // Mouse events
+      canvas.addEventListener("mousedown", (e) => { isDrawing = true; const pos = getPos(e); scratch(pos.x, pos.y); });
+      window.addEventListener("mousemove", (e) => { if (isDrawing) { const pos = getPos(e); scratch(pos.x, pos.y); } });
+      window.addEventListener("mouseup", () => { isDrawing = false; });
+
+      // Touch events
+      canvas.addEventListener("touchstart", (e) => { e.preventDefault(); isDrawing = true; const pos = getPos(e); scratch(pos.x, pos.y); });
+      canvas.addEventListener("touchmove", (e) => { e.preventDefault(); if (isDrawing) { const pos = getPos(e); scratch(pos.x, pos.y); } });
+      canvas.addEventListener("touchend", () => { isDrawing = false; });
+
+      // Check scratch percentage
+      function checkRevealThreshold() {
+        if (isRevealed) return;
+
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const pixels = imgData.data;
+        let transparentPixels = 0;
+
+        for (let i = 3; i < pixels.length; i += 4) {
+          if (pixels[i] === 0) transparentPixels++;
+        }
+
+        const clearedPercent = (transparentPixels / (pixels.length / 4)) * 100;
+
+        // Reveal automatically when 50% scratched
+        if (clearedPercent > 50) {
+          isRevealed = true;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          triggerRevealEffects();
+        }
+      }
+
+      function triggerRevealEffects() {
+        // Show copy button
+        document.getElementById("actionArea").classList.remove("hidden");
+        document.getElementById("instruction").innerText = "Congratulations! Copy your voucher code above.";
+
+        // Confetti Blast
+        if (window.confetti) {
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        }
+      }
+    }
+
+    // -------------------------------------------------------------
+    // UTILITY: COPY TO CLIPBOARD
+    // -------------------------------------------------------------
+    function copyToClipboard(text, btnElement) {
+      navigator.clipboard.writeText(text).then(() => {
+        const originalText = btnElement.innerText;
+        btnElement.innerText = "Copied! ✓";
+        btnElement.classList.add("bg-green-500", "text-white");
+        setTimeout(() => {
+          btnElement.innerText = originalText;
+          btnElement.classList.remove("bg-green-500", "text-white");
+        }, 2000);
+      });
+    }
+
+    function renderNotFound() {
+      appEl.innerHTML = `
+        <div class="text-center space-y-4">
+          <p class="text-red-400 font-semibold">Card Not Found</p>
+          <a href="${window.location.pathname}" class="inline-block bg-zinc-800 text-xs px-4 py-2 rounded text-zinc-300">Back to All Links</a>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>
