@@ -2,28 +2,146 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Happy Marriage Gayatri</title>
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+
   <!-- Canvas Confetti -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
   <style>
-    body {
-      touch-action: manipulation;
+    * {
+      -webkit-tap-highlight-color: transparent;
     }
-    .scratch-card {
-      background: radial-gradient(circle at top left, #2a2a2a, #111111);
+
+    html, body {
+      min-height: 100%;
+    }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 50% 0%, #252525 0%, #111 38%, #070707 100%);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .gift-card {
+      box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(255, 255, 255, 0.04),
+        0 0 45px rgba(255, 255, 255, 0.035);
+    }
+
+    .scratch-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1.9 / 1;
+      overflow: hidden;
+      border-radius: 16px;
+      background: #080808;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    .voucher-code {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.08), transparent 25%),
+        radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.05), transparent 30%),
+        #101010;
+    }
+
+    .code-inner {
+      text-align: center;
+    }
+
+    .code-label {
+      color: #777;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 7px;
+    }
+
+    .code-text {
+      color: #fff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: clamp(17px, 5vw, 24px);
+      font-weight: 800;
+      letter-spacing: 0.12em;
+    }
+
+    #scratchCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .amazon-logo {
+      width: 62px;
+      height: auto;
+    }
+
+    .scratch-icon {
+      width: 28px;
+      height: 28px;
+      margin: 0 auto 7px;
+      opacity: 0.8;
+    }
+
+    .pulse {
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.7;
+      }
+      50% {
+        transform: scale(1.04);
+        opacity: 1;
+      }
+    }
+
+    .copy-button {
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .copy-button:active {
+      transform: scale(0.97);
+    }
+
+    .copy-button:hover {
+      box-shadow: 0 8px 25px rgba(255, 255, 255, 0.08);
+    }
+
+    .hidden-after-reveal {
+      display: none;
     }
   </style>
 </head>
-<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col items-center justify-center p-4">
 
-  <!-- Main Container -->
-  <div id="app" class="w-full max-w-md"></div>
+<body class="min-h-screen flex items-center justify-center px-4 py-8 text-white">
+
+  <main id="app" class="w-full max-w-[400px]"></main>
 
   <script>
-    // 1. DATA CONFIGURATION (Extracted from image)
+    // -------------------------------------------------------------
+    // 1. DATA CONFIGURATION
+    // -------------------------------------------------------------
     const CARDS_DATA = [
       { id: "card1", code: "JBGE4GGDDCTEVH" },
       { id: "card2", code: "4A6GX87APETFNQ" },
@@ -35,27 +153,26 @@
     const GREETING = "Best wishes Gayatri";
     const SENDER = "From Mohit Chitkara and Family";
 
-    // 2. ROUTING LOGIC
+    // -------------------------------------------------------------
+    // 2. ROUTER LOGIC
+    // -------------------------------------------------------------
     const urlParams = new URLSearchParams(window.location.search);
     const selectedCardId = urlParams.get("id");
-
     const appEl = document.getElementById("app");
 
     if (selectedCardId) {
-      // Find the card matching the query param ?id=cardX
       const card = CARDS_DATA.find(c => c.id === selectedCardId);
       if (card) {
-        renderScratchView(card);
+        renderCardView(card);
       } else {
         renderNotFound();
       }
     } else {
-      // Show Admin / Generator View with the 5 shareable links
       renderAdminView();
     }
 
     // -------------------------------------------------------------
-    // ADMIN / LINK SELECTION VIEW
+    // 3. ADMIN LINK GENERATOR VIEW
     // -------------------------------------------------------------
     function renderAdminView() {
       const baseUrl = window.location.origin + window.location.pathname;
@@ -63,14 +180,14 @@
       let linksHtml = CARDS_DATA.map((card, idx) => {
         const fullUrl = `${baseUrl}?id=${card.id}`;
         return `
-          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col gap-2">
-            <div class="flex justify-between items-center">
-              <span class="text-xs font-semibold uppercase tracking-wider text-amber-400">Card #${idx + 1}</span>
-              <span class="text-xs text-zinc-500 font-mono">${card.code}</span>
+          <div class="bg-[#111] border border-white/10 rounded-xl p-4 space-y-2">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-white uppercase tracking-wider">Card #${idx + 1}</span>
+              <span class="font-mono text-neutral-400">${card.code}</span>
             </div>
-            <div class="flex items-center gap-2">
-              <input type="text" readonly value="${fullUrl}" class="bg-zinc-950 border border-zinc-800 text-xs text-zinc-400 rounded p-2 w-full font-mono select-all focus:outline-none" />
-              <button onclick="copyToClipboard('${fullUrl}', this)" class="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold px-3 py-2 rounded text-xs whitespace-nowrap transition">
+            <div class="flex gap-2">
+              <input type="text" readonly value="${fullUrl}" class="bg-black border border-white/10 text-xs text-neutral-300 rounded p-2.5 w-full font-mono select-all focus:outline-none" />
+              <button onclick="copyAdminLink('${fullUrl}', this)" class="bg-white text-black font-bold px-3 py-2.5 rounded-lg text-xs whitespace-nowrap copy-button">
                 Copy Link
               </button>
             </div>
@@ -81,9 +198,9 @@
       appEl.innerHTML = `
         <div class="space-y-6">
           <div class="text-center space-y-1">
-            <h1 class="text-xl font-bold text-amber-400">Happy Marriage Gayatri</h1>
-            <p class="text-xs text-zinc-400">5 Unique Scratch Card Links</p>
-            <p class="text-xs text-zinc-500 italic mt-1">${SENDER}</p>
+            <p class="text-[10px] uppercase tracking-[0.28em] text-neutral-500 font-bold">Admin Dashboard</p>
+            <h1 class="text-xl font-bold tracking-tight text-white">Happy Marriage Gayatri</h1>
+            <p class="text-xs text-neutral-400">${SENDER}</p>
           </div>
           <div class="space-y-3">
             ${linksHtml}
@@ -92,173 +209,400 @@
       `;
     }
 
-    // -------------------------------------------------------------
-    // SCRATCH CARD CLIENT VIEW
-    // -------------------------------------------------------------
-    function renderScratchView(card) {
-      appEl.innerHTML = `
-        <div class="scratch-card border border-amber-500/30 rounded-2xl p-6 shadow-2xl relative overflow-hidden text-center space-y-5">
-          
-          <!-- Header Branding -->
-          <div class="space-y-1">
-            <div class="text-amber-400 text-xs font-bold tracking-widest uppercase">Special Gift Voucher</div>
-            <h2 class="text-2xl font-bold text-zinc-100">${GREETING}</h2>
-            <p class="text-xs text-zinc-400 font-medium">${SENDER}</p>
-          </div>
-
-          <!-- Scratch Canvas Container -->
-          <div class="relative w-full h-32 bg-zinc-900 rounded-xl border border-zinc-800 flex items-center justify-center overflow-hidden shadow-inner">
-            <!-- Hidden Code underneath -->
-            <div class="absolute inset-0 flex flex-col items-center justify-center space-y-1">
-              <span class="text-2xl font-mono font-extrabold tracking-wider text-amber-400 select-all">${card.code}</span>
-              <span class="text-[10px] text-zinc-500 uppercase tracking-widest">Voucher Code</span>
-            </div>
-
-            <!-- Scratch Foil Canvas -->
-            <canvas id="scratchCanvas" class="absolute inset-0 z-10 cursor-pointer touch-none"></canvas>
-          </div>
-
-          <!-- Copy Button Container -->
-          <div id="actionArea" class="hidden">
-            <button onclick="copyToClipboard('${card.code}', this)" class="w-full bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold py-3 rounded-xl shadow-lg transition">
-              Copy Code
-            </button>
-          </div>
-
-          <p id="instruction" class="text-xs text-zinc-500">Scratch the silver box above to reveal your code</p>
-        </div>
-      `;
-
-      initScratchCanvas();
+    function copyAdminLink(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.innerText;
+        btn.innerText = "Copied! ✓";
+        btn.classList.add("bg-neutral-300");
+        setTimeout(() => {
+          btn.innerText = orig;
+          btn.classList.remove("bg-neutral-300");
+        }, 1800);
+      });
     }
 
     // -------------------------------------------------------------
-    // CANVAS SCRATCH LOGIC
+    // 4. DESIGN CARD VIEW
     // -------------------------------------------------------------
-    function initScratchCanvas() {
+    function renderCardView(card) {
+      appEl.innerHTML = `
+        <section class="gift-card relative overflow-hidden rounded-[24px] bg-[#111111] border border-white/[0.07]">
+          
+          <!-- Decorative glow -->
+          <div class="pointer-events-none absolute -top-32 -right-32 h-64 w-64 rounded-full bg-white/[0.025] blur-3xl"></div>
+
+          <div class="relative p-5 sm:p-6">
+
+            <!-- Header -->
+            <header class="flex items-start justify-between">
+              <div>
+                <p class="text-[10px] uppercase tracking-[0.28em] text-neutral-500 font-bold">
+                  Digital Reward
+                </p>
+                <h1 class="mt-2 text-xl font-bold tracking-tight text-white">
+                  ${GREETING}
+                </h1>
+                <p class="mt-1 text-xs text-neutral-400 font-medium">
+                  ${SENDER}
+                </p>
+              </div>
+
+              <!-- Amazon Smile -->
+              <svg class="amazon-logo mt-1" viewBox="0 0 120 50" xmlns="http://www.w3.org/2000/svg" aria-label="Amazon">
+                <text x="0" y="30" fill="white" font-size="27" font-family="Arial, sans-serif" font-weight="700">amazon</text>
+                <path d="M24 38 C45 49, 75 49, 97 36" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+                <path d="M91 34 L98 36 L94 42" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </header>
+
+            <!-- Instructions -->
+            <div class="mt-5 flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3.5">
+              <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06]">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="text-neutral-300">
+                  <path d="M12 2v20M2 12h20" />
+                </svg>
+              </div>
+              <p class="text-xs leading-5 text-neutral-400">
+                Scratch the box below to reveal your code.
+              </p>
+            </div>
+
+            <!-- Scratch Area -->
+            <div class="mt-5">
+              <div id="scratchWrapper" class="scratch-wrapper">
+                
+                <!-- Hidden Code -->
+                <div class="voucher-code">
+                  <div class="code-inner">
+                    <div class="code-label">Your voucher code</div>
+                    <div id="voucherCode" class="code-text">${card.code}</div>
+                  </div>
+                </div>
+
+                <!-- Scratch Canvas -->
+                <canvas id="scratchCanvas"></canvas>
+
+                <!-- Scratch hint -->
+                <div id="scratchHint" class="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div class="text-center pulse">
+                    <svg class="scratch-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
+                      <path d="M15.5 4.5L19.5 8.5" />
+                      <path d="M13.5 6.5L17.5 10.5" />
+                      <path d="M4 20l3.5-1 10-10-3.5-3.5-10 10L4 20z" />
+                      <path d="M4 20l3-3" />
+                    </svg>
+                    <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-white">Scratch Here</p>
+                    <p class="mt-1 text-[9px] text-white/50">Drag your finger or mouse</p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Status -->
+            <div class="mt-3 flex items-center justify-between">
+              <span id="scratchStatus" class="text-[10px] text-neutral-600">Scratch to reveal</span>
+              <span id="revealStatus" class="text-[10px] font-semibold text-neutral-600">0%</span>
+            </div>
+
+            <!-- Copy Section -->
+            <div id="copySection" class="hidden-after-reveal mt-5">
+              <div class="mb-3 text-center">
+                <p class="text-[10px] uppercase tracking-[0.2em] font-bold text-neutral-500">Code revealed</p>
+              </div>
+              <button id="copyButton" type="button" class="copy-button w-full rounded-xl bg-white px-4 py-3.5 text-sm font-bold text-black">
+                Copy Code
+              </button>
+            </div>
+
+            <!-- Footer -->
+            <footer class="mt-6 flex items-center justify-between text-[9px] text-neutral-600">
+              <span>Digital Gift Voucher</span>
+              <span>Secure • Instant • Redeemable</span>
+            </footer>
+
+          </div>
+        </section>
+
+        <p class="mt-4 text-center text-[10px] text-neutral-700">
+          Happy Marriage Gayatri
+        </p>
+      `;
+
+      initScratchEngine();
+    }
+
+    // -------------------------------------------------------------
+    // 5. CANVAS & INTERACTION ENGINE
+    // -------------------------------------------------------------
+    function initScratchEngine() {
       const canvas = document.getElementById("scratchCanvas");
-      if (!canvas) return;
+      const wrapper = document.getElementById("scratchWrapper");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
-      const ctx = canvas.getContext("2d");
-      const rect = canvas.parentElement.getBoundingClientRect();
-      
-      canvas.width = rect.width;
-      canvas.height = rect.height;
+      const scratchHint = document.getElementById("scratchHint");
+      const scratchStatus = document.getElementById("scratchStatus");
+      const revealStatus = document.getElementById("revealStatus");
+      const copySection = document.getElementById("copySection");
+      const copyButton = document.getElementById("copyButton");
+      const voucherCode = document.getElementById("voucherCode");
 
-      // Draw metallic foil pattern
-      ctx.fillStyle = "#888888";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const REVEAL_THRESHOLD = 0.55;
+      const BRUSH_SIZE = 38;
 
-      // Add silver foil texture detail
-      for (let i = 0; i < 500; i++) {
-        ctx.fillStyle = Math.random() > 0.5 ? "#aaaaaa" : "#666666";
-        ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 2, 2);
+      let isScratching = false;
+      let revealed = false;
+      let lastPoint = null;
+      let canvasWidth = 0;
+      let canvasHeight = 0;
+
+      function resizeCanvas() {
+        const rect = wrapper.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        canvasWidth = rect.width;
+        canvasHeight = rect.height;
+
+        canvas.width = Math.floor(canvasWidth * dpr);
+        canvas.height = Math.floor(canvasHeight * dpr);
+
+        canvas.style.width = canvasWidth + "px";
+        canvas.style.height = canvasHeight + "px";
+
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        drawFoil();
       }
 
-      // Add overlay text instruction
-      ctx.font = "bold 14px sans-serif";
-      ctx.fillStyle = "#222222";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("✨ SCRATCH HERE ✨", canvas.width / 2, canvas.height / 2);
+      function drawFoil() {
+        const gradient = ctx.createLinearGradient(0, 0, canvasWidth, canvasHeight);
+        gradient.addColorStop(0, "#565656");
+        gradient.addColorStop(0.18, "#a4a4a4");
+        gradient.addColorStop(0.35, "#6c6c6c");
+        gradient.addColorStop(0.52, "#c2c2c2");
+        gradient.addColorStop(0.68, "#777777");
+        gradient.addColorStop(0.84, "#a8a8a8");
+        gradient.addColorStop(1, "#555555");
 
-      let isDrawing = false;
-      let isRevealed = false;
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-      function scratch(x, y) {
-        if (isRevealed) return;
-        ctx.globalCompositeOperation = "destination-out";
-        ctx.beginPath();
-        ctx.arc(x, y, 20, 0, Math.PI * 2);
-        ctx.fill();
+        for (let i = 0; i < 2200; i++) {
+          const x = Math.random() * canvasWidth;
+          const y = Math.random() * canvasHeight;
+          const alpha = Math.random() * 0.15;
 
-        checkRevealThreshold();
-      }
-
-      function getPos(e) {
-        const bounds = canvas.getBoundingClientRect();
-        let clientX = e.clientX;
-        let clientY = e.clientY;
-
-        if (e.touches && e.touches[0]) {
-          clientX = e.touches[0].clientX;
-          clientY = e.touches[0].clientY;
+          ctx.fillStyle = Math.random() > 0.5 ? `rgba(255,255,255,${alpha})` : `rgba(0,0,0,${alpha})`;
+          ctx.fillRect(x, y, Math.random() * 2.2 + 0.4, Math.random() * 1.2 + 0.4);
         }
 
+        ctx.save();
+        ctx.globalAlpha = 0.12;
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 1;
+
+        for (let x = -canvasHeight; x < canvasWidth; x += 12) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x + canvasHeight, canvasHeight);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        const edge = ctx.createLinearGradient(0, 0, 0, canvasHeight);
+        edge.addColorStop(0, "rgba(0,0,0,.25)");
+        edge.addColorStop(0.5, "rgba(255,255,255,.05)");
+        edge.addColorStop(1, "rgba(0,0,0,.3)");
+
+        ctx.fillStyle = edge;
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        ctx.fillStyle = "rgba(20,20,20,.65)";
+        ctx.font = "700 12px Arial";
+        ctx.fillText("SCRATCH TO REVEAL", canvasWidth / 2, canvasHeight / 2);
+
+        ctx.font = "500 9px Arial";
+        ctx.fillStyle = "rgba(20,20,20,.45)";
+        ctx.fillText("Your code is hidden underneath", canvasWidth / 2, canvasHeight / 2 + 18);
+      }
+
+      function getPoint(event) {
+        const rect = canvas.getBoundingClientRect();
+        let clientX = event.touches && event.touches.length > 0 ? event.touches[0].clientX : event.clientX;
+        let clientY = event.touches && event.touches.length > 0 ? event.touches[0].clientY : event.clientY;
+
         return {
-          x: clientX - bounds.left,
-          y: clientY - bounds.top
+          x: clientX - rect.left,
+          y: clientY - rect.top
         };
       }
 
+      function scratch(point) {
+        if (revealed) return;
+
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.lineWidth = BRUSH_SIZE;
+
+        if (lastPoint) {
+          ctx.beginPath();
+          ctx.moveTo(lastPoint.x, lastPoint.y);
+          ctx.lineTo(point.x, point.y);
+          ctx.stroke();
+        }
+
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, BRUSH_SIZE / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        lastPoint = point;
+        checkRevealProgress();
+      }
+
+      function checkRevealProgress() {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let transparent = 0;
+        const step = 8;
+
+        for (let i = 3; i < imageData.data.length; i += step * 4) {
+          if (imageData.data[i] < 80) transparent++;
+        }
+
+        const totalSamples = Math.floor(imageData.data.length / (step * 4));
+        const percent = transparent / totalSamples;
+        const displayPercent = Math.min(Math.round(percent * 100), 100);
+
+        revealStatus.textContent = `${displayPercent}%`;
+
+        if (percent >= REVEAL_THRESHOLD) {
+          reveal();
+        }
+      }
+
+      function reveal() {
+        if (revealed) return;
+        revealed = true;
+
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        scratchHint.style.display = "none";
+
+        scratchStatus.textContent = "Code unlocked";
+        scratchStatus.className = "text-[10px] font-semibold text-white/70";
+
+        revealStatus.textContent = "100%";
+        revealStatus.className = "text-[10px] font-semibold text-white";
+
+        copySection.classList.remove("hidden-after-reveal");
+        celebrate();
+      }
+
+      function celebrate() {
+        const duration = 2200;
+        const end = Date.now() + duration;
+
+        const interval = setInterval(() => {
+          const timeLeft = end - Date.now();
+          if (timeLeft <= 0) return clearInterval(interval);
+
+          const particleCount = 35 * (timeLeft / duration);
+
+          confetti({ particleCount, angle: 60, spread: 65, origin: { x: 0 } });
+          confetti({ particleCount, angle: 120, spread: 65, origin: { x: 1 } });
+        }, 180);
+
+        confetti({
+          particleCount: 120,
+          spread: 100,
+          startVelocity: 45,
+          scalar: 0.9,
+          origin: { x: 0.5, y: 0.55 }
+        });
+      }
+
       // Mouse events
-      canvas.addEventListener("mousedown", (e) => { isDrawing = true; const pos = getPos(e); scratch(pos.x, pos.y); });
-      window.addEventListener("mousemove", (e) => { if (isDrawing) { const pos = getPos(e); scratch(pos.x, pos.y); } });
-      window.addEventListener("mouseup", () => { isDrawing = false; });
+      canvas.addEventListener("mousedown", (e) => {
+        if (revealed) return;
+        isScratching = true;
+        lastPoint = getPoint(e);
+        scratch(lastPoint);
+      });
+
+      canvas.addEventListener("mousemove", (e) => {
+        if (!isScratching || revealed) return;
+        scratch(getPoint(e));
+      });
+
+      window.addEventListener("mouseup", () => {
+        isScratching = false;
+        lastPoint = null;
+      });
 
       // Touch events
-      canvas.addEventListener("touchstart", (e) => { e.preventDefault(); isDrawing = true; const pos = getPos(e); scratch(pos.x, pos.y); });
-      canvas.addEventListener("touchmove", (e) => { e.preventDefault(); if (isDrawing) { const pos = getPos(e); scratch(pos.x, pos.y); } });
-      canvas.addEventListener("touchend", () => { isDrawing = false; });
+      canvas.addEventListener("touchstart", (e) => {
+        if (revealed) return;
+        e.preventDefault();
+        isScratching = true;
+        lastPoint = getPoint(e);
+        scratch(lastPoint);
+      }, { passive: false });
 
-      // Check scratch percentage
-      function checkRevealThreshold() {
-        if (isRevealed) return;
+      canvas.addEventListener("touchmove", (e) => {
+        if (!isScratching || revealed) return;
+        e.preventDefault();
+        scratch(getPoint(e));
+      }, { passive: false });
 
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const pixels = imgData.data;
-        let transparentPixels = 0;
+      canvas.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        isScratching = false;
+        lastPoint = null;
+      }, { passive: false });
 
-        for (let i = 3; i < pixels.length; i += 4) {
-          if (pixels[i] === 0) transparentPixels++;
+      // Copy Action
+      copyButton.addEventListener("click", async () => {
+        const code = voucherCode.textContent.trim();
+        try {
+          await navigator.clipboard.writeText(code);
+          copyButton.textContent = "Copied! ✓";
+          copyButton.classList.add("bg-neutral-200");
+
+          setTimeout(() => {
+            copyButton.textContent = "Copy Code";
+            copyButton.classList.remove("bg-neutral-200");
+          }, 1800);
+        } catch (err) {
+          const textarea = document.createElement("textarea");
+          textarea.value = code;
+          textarea.style.position = "fixed";
+          textarea.style.opacity = "0";
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          textarea.remove();
+
+          copyButton.textContent = "Copied! ✓";
+          setTimeout(() => {
+            copyButton.textContent = "Copy Code";
+          }, 1800);
         }
-
-        const clearedPercent = (transparentPixels / (pixels.length / 4)) * 100;
-
-        // Reveal automatically when 50% scratched
-        if (clearedPercent > 50) {
-          isRevealed = true;
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          triggerRevealEffects();
-        }
-      }
-
-      function triggerRevealEffects() {
-        // Show copy button
-        document.getElementById("actionArea").classList.remove("hidden");
-        document.getElementById("instruction").innerText = "Congratulations! Copy your voucher code above.";
-
-        // Confetti Blast
-        if (window.confetti) {
-          confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 }
-          });
-        }
-      }
-    }
-
-    // -------------------------------------------------------------
-    // UTILITY: COPY TO CLIPBOARD
-    // -------------------------------------------------------------
-    function copyToClipboard(text, btnElement) {
-      navigator.clipboard.writeText(text).then(() => {
-        const originalText = btnElement.innerText;
-        btnElement.innerText = "Copied! ✓";
-        btnElement.classList.add("bg-green-500", "text-white");
-        setTimeout(() => {
-          btnElement.innerText = originalText;
-          btnElement.classList.remove("bg-green-500", "text-white");
-        }, 2000);
       });
+
+      window.addEventListener("resize", () => {
+        if (!revealed) resizeCanvas();
+      });
+
+      resizeCanvas();
     }
 
     function renderNotFound() {
       appEl.innerHTML = `
         <div class="text-center space-y-4">
           <p class="text-red-400 font-semibold">Card Not Found</p>
-          <a href="${window.location.pathname}" class="inline-block bg-zinc-800 text-xs px-4 py-2 rounded text-zinc-300">Back to All Links</a>
+          <a href="${window.location.pathname}" class="inline-block bg-white/10 text-xs px-4 py-2 rounded text-neutral-300">View All Links</a>
         </div>
       `;
     }
